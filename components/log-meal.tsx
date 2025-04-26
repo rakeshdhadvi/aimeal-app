@@ -1,50 +1,34 @@
 "use client"
-import { useRef, useState, useEffect } from "react";
 
+import { useState, useEffect, useRef } from "react"
 import { MobileLayout } from "./mobile-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Camera, Search, Sparkles } from "lucide-react"
+import { Camera, Search, Sparkles, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CameraModal } from "./camera-modal"
 import { FoodSearch } from "./food-search"
-import { MealCalendar } from "@/components/meal-calendar"
-
+import { MealEditor } from "./meal-editor"
+import { useMeals } from "@/context/meal-context"
 import type { FoodItem } from "@/lib/food-database"
 
 export function LogMeal() {
+  const { recentMeals } = useMeals()
   const [activeTab, setActiveTab] = useState("breakfast")
   const [cameraModalOpen, setCameraModalOpen] = useState(false)
-  const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>(() => {
-    // Try to load from LocalStorage
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("selectedFoods");
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    }
-    return [];
-  });
-  
+  const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [hasMounted, setHasMounted] = useState(false);
+  const [isAddingMeal, setIsAddingMeal] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
-      console.log("User selected a meal photo:", file);
-      // You can pass this file to your AI food recognition later
-    }
-  };
+  const aiInsights = [
+    "Late dinner detected — may impact sleep quality.",
+    "Average protein intake this week is below target.",
+    "Good consistency with breakfast timing!",
+  ]
 
   const mealTabs = [
     { id: "breakfast", label: "Breakfast" },
@@ -53,46 +37,26 @@ export function LogMeal() {
     { id: "snacks", label: "Snacks" },
   ]
 
-  const recentMeals = [
-    {
-      name: "Oatmeal with berries",
-      calories: 320,
-      time: "Yesterday",
-      image: "/placeholder.jpg", // Using placeholder instead of missing image
-    },
-    {
-      name: "Greek yogurt with honey",
-      calories: 180,
-      time: "2 days ago",
-      image: "/placeholder.jpg", // Using placeholder instead of missing image
-    },
-    {
-      name: "Avocado toast",
-      calories: 290,
-      time: "3 days ago",
-      image: "/placeholder.jpg", // Using placeholder instead of missing image
-    },
-    {
-      name: "Protein smoothie",
-      calories: 210,
-      time: "4 days ago",
-      image: "/placeholder.jpg", // Using placeholder instead of missing image
-    },
-  ]
-  
-  const aiInsights = [
-    "Late dinner detected on Wednesday — may impact sleep quality.",
-    "Your average protein intake this week is 12g below target.",
-    "Great job staying consistent with breakfast timing!",
-  ]
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedFoods")
+    if (saved) {
+      setSelectedFoods(JSON.parse(saved))
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("selectedFoods", JSON.stringify(selectedFoods))
+  }, [selectedFoods])
+
+  const sortedRecentMeals = [...recentMeals]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
 
   const handleFoodSelected = (food: FoodItem) => {
-    const updatedFoods = [...selectedFoods, food];
-    setSelectedFoods(updatedFoods);
-    localStorage.setItem("selectedFoods", JSON.stringify(updatedFoods));
-    setError(null);
-  };
-  
+    setSelectedFoods((prev) => [...prev, { ...food, quantity: 1 }])
+    setError(null)
+  }
+
   const handleOpenCameraModal = () => {
     try {
       setCameraModalOpen(true)
@@ -100,6 +64,27 @@ export function LogMeal() {
       console.error("Error opening camera modal:", error)
       setError("Could not access camera. Please check permissions.")
     }
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedImage(file)
+      console.log("Selected meal photo:", file)
+    }
+  }
+
+  const handleCreateMeal = () => {
+    if (selectedFoods.length === 0) {
+      setError("Please select at least one food item")
+      return
+    }
+    setIsAddingMeal(true)
+  }
+
+  const handleClearSelection = () => {
+    setSelectedFoods([])
+    localStorage.removeItem("selectedFoods")
   }
 
   return (
@@ -183,9 +168,20 @@ export function LogMeal() {
 
               <FoodSearch onFoodSelected={handleFoodSelected} />
 
-              {hasMounted && selectedFoods.length > 0 && (
+              {selectedFoods.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="font-medium text-sm">Selected Foods</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium text-sm">Selected Foods</h3>
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={handleClearSelection}>
+                        Clear
+                      </Button>
+                      <Button size="sm" onClick={handleCreateMeal}>
+                        <Plus className="h-4 w-4 mr-1" /> Create Meal
+                      </Button>
+                    </div>
+                  </div>
+
                   {selectedFoods.map((food, index) => (
                     <Card key={`${food.id}-${index}`} className="border-none shadow-sm">
                       <CardContent className="p-3">
@@ -201,43 +197,51 @@ export function LogMeal() {
                       </CardContent>
                     </Card>
                   ))}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-sm font-medium">Total Calories:</span>
+                    <span className="text-lg font-bold">
+                      {selectedFoods.reduce((sum, food) => sum + food.calories, 0)} kcal
+                    </span>
+                  </div>
                 </div>
               )}
 
               <div className="space-y-2">
                 <h3 className="font-medium text-sm">Recent Meals</h3>
-                {recentMeals.map((meal, index) => (
-                  <Card key={index} className="border-none shadow-sm">
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <img
-                        src={meal.image}
-                        alt={meal.name}
-                        className="w-12 h-12 rounded-md object-cover border"
-                        onError={(e) => {
-                          // Fallback if image fails to load
-                          (e.target as HTMLImageElement).src = "/placeholder.jpg";
-                        }}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{meal.name}</p>
-                        <p className="text-xs text-muted-foreground">{meal.time}</p>
-                      </div>
-                      <div className="text-sm">{meal.calories} kcal</div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {sortedRecentMeals.length === 0 ? (
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <p className="text-muted-foreground">No recent meals</p>
+                  </div>
+                ) : (
+                  sortedRecentMeals.map((meal) => (
+                    <Card key={meal.id} className="border-none shadow-sm">
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium">{meal.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(meal.date).toLocaleDateString()} - {meal.time}
+                            </p>
+                          </div>
+                          <div className="text-sm">{meal.calories} kcal</div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
 
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">AI Insights</h3>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    {aiInsights.map((insight, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-primary mt-0.5">•</span>
-                        <span>{insight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">AI Insights</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {aiInsights.map((insight, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>{insight}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </TabsContent>
           ))}
@@ -245,6 +249,16 @@ export function LogMeal() {
       </div>
 
       <CameraModal open={cameraModalOpen} onOpenChange={setCameraModalOpen} onFoodDetected={handleFoodSelected} />
+
+      <MealEditor
+        isOpen={isAddingMeal}
+        onClose={() => {
+          setIsAddingMeal(false)
+          setSelectedFoods([])
+        }}
+        initialFoods={selectedFoods}
+        initialTitle={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+      />
     </MobileLayout>
   )
 }

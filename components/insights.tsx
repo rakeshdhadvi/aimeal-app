@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { MobileLayout } from "./mobile-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Chart,
   ChartContainer,
@@ -16,7 +18,6 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 
 export function Insights() {
-  // Weekly calorie data
   const calorieData = [
     { day: "Mon", calories: 1850 },
     { day: "Tue", calories: 1750 },
@@ -27,12 +28,54 @@ export function Insights() {
     { day: "Sun", calories: 1800 },
   ]
 
-  // Macro data for pie chart
   const macroData = [
     { name: "Carbs", value: 50, color: "#10b981" },
     { name: "Protein", value: 30, color: "#3b82f6" },
     { name: "Fat", value: 20, color: "#f59e0b" },
   ]
+
+  const [goals, setGoals] = useState({
+    calories: 2000,
+    protein: 120,
+    carbs: 250,
+    fat: 65,
+  })
+
+  const [editingGoal, setEditingGoal] = useState<keyof typeof goals | null>(null)
+  const [tempValue, setTempValue] = useState("")
+
+  const goalLimits: Record<keyof typeof goals, { min: number; max: number; unit: string }> = {
+    calories: { min: 1000, max: 6000, unit: "" },
+    protein: { min: 20, max: 500, unit: "g" },
+    carbs: { min: 50, max: 800, unit: "g" },
+    fat: { min: 10, max: 200, unit: "g" },
+  }
+
+  const startEditing = (goalType: keyof typeof goals) => {
+    setEditingGoal(goalType)
+    setTempValue(goals[goalType].toString())
+  }
+
+  const saveGoal = () => {
+    if (editingGoal) {
+      const { min, max } = goalLimits[editingGoal]
+      const value = parseInt(tempValue)
+      if (!isNaN(value) && value >= min && value <= max) {
+        setGoals(prev => ({
+          ...prev,
+          [editingGoal]: value,
+        }))
+        setEditingGoal(null)
+      } else {
+        alert(`Please enter a value between ${min} and ${max}`)
+      }
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingGoal(null)
+    setTempValue("")
+  }
 
   return (
     <MobileLayout>
@@ -42,6 +85,7 @@ export function Insights() {
           <p className="text-muted-foreground">Track your progress</p>
         </div>
 
+        {/* Weekly Calories */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Weekly Calorie Trend</CardTitle>
@@ -73,6 +117,7 @@ export function Insights() {
           </CardContent>
         </Card>
 
+        {/* Macros Pie Chart */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Macronutrient Distribution</CardTitle>
@@ -112,6 +157,7 @@ export function Insights() {
           </CardContent>
         </Card>
 
+        {/* AI Insight */}
         <Card className="bg-accent border-none">
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
@@ -128,25 +174,44 @@ export function Insights() {
           </CardContent>
         </Card>
 
+        {/* Adjustable Goals */}
         <div className="space-y-3">
           <h2 className="font-semibold text-sm">Adjust Your Goals</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="w-full justify-start">
-              <span>Calorie Goal</span>
-              <span className="ml-auto text-muted-foreground">2000</span>
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              <span>Protein Goal</span>
-              <span className="ml-auto text-muted-foreground">120g</span>
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              <span>Carbs Goal</span>
-              <span className="ml-auto text-muted-foreground">250g</span>
-            </Button>
-            <Button variant="outline" className="w-full justify-start">
-              <span>Fat Goal</span>
-              <span className="ml-auto text-muted-foreground">65g</span>
-            </Button>
+          <div className="grid grid-cols-1 gap-4">
+            {Object.entries(goals).map(([key, value]) => (
+              <div key={key} className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => startEditing(key as keyof typeof goals)}
+                >
+                  <span>{key.charAt(0).toUpperCase() + key.slice(1)} Goal</span>
+                  <span className="ml-auto text-muted-foreground">
+                    {value}
+                    {goalLimits[key as keyof typeof goals].unit}
+                  </span>
+                </Button>
+
+                {editingGoal === key && (
+                  <div className="space-y-2">
+                    <Input
+                      value={tempValue}
+                      onChange={(e) => setTempValue(e.target.value)}
+                      type="number"
+                      className="w-full text-lg p-3 appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      placeholder="Enter your goal"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Allowed range: {goalLimits[key as keyof typeof goals].min} - {goalLimits[key as keyof typeof goals].max}{goalLimits[key as keyof typeof goals].unit}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={saveGoal}>Save</Button>
+                      <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

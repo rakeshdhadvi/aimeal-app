@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { MealProvider } from "@/context/meal-context"  // Import MealProvider
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,7 +22,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          {children}
+          <MealProvider>  {/* Wrap the children with MealProvider */}
+            {children}
+          </MealProvider>
         </ThemeProvider>
       </body>
     </html>
