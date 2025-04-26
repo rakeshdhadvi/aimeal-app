@@ -1,34 +1,71 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { Session } from '@supabase/supabase-js';
 import Script from 'next/script';
 import { Dashboard } from '@/components/dashboard';
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null);
+export default function Page() {
+  const supabase = createClientComponentClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
 
+  const createUserIfNotExists = async (user: any) => {
+    if (!user) return;
+  
+    console.log("Trying to create user:", user); // ADD THIS
+  
+    const { data, error } = await supabase
+      .from('users')
+      .upsert([
+        {
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata.full_name || null,
+          avatar_url: user.user_metadata.avatar_url || null,
+          updated_at: new Date().toISOString(),
+        },
+      ], { onConflict: ['id'] });
+  
+    if (error) {
+      console.error("Error creating user:", error.message);
+    } else {
+      console.log("User inserted or already exists:", data);
+    }
+  };
+  
+
   useEffect(() => {
     const getSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user ?? null);
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Error getting session:", error);
+      } else {
+        setSession(data.session);
+      }
+      setLoading(false);
     };
-
+  
     getSession();
-
-    // listen for login/logout
+  
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        setSession(session);
       }
     );
-
+  
     return () => {
-      authListener?.subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
+  
+  
+  
+  
+  
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +78,27 @@ export default function Home() {
   };
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
     });
+  
+    if (error) {
+      console.error("Google sign in error:", error.message);
+    } else if (data?.user) {
+      await createUserIfNotExists(data.user);
+    }
   };
+  
 
-  if (!user) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-sky-100 to-indigo-200 p-4">
         <div className="bg-white/90 backdrop-blur-md rounded-xl p-6 shadow-lg w-full max-w-md space-y-4">

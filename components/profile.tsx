@@ -1,5 +1,12 @@
 "use client"
-import { supabase } from "@/lib/supabaseClient";
+
+import { toast } from "sonner"; // assuming you're using sonner for toasts
+import { GiftIcon } from "lucide-react"; // or whatever icon library you're using
+
+import { UsersIcon, ZapIcon, BellIcon, SearchIcon } from "lucide-react";
+
+
+
 import { useState, useEffect } from "react"
 import { MobileLayout } from "./mobile-layout"
 import { Card, CardContent } from "@/components/ui/card"
@@ -7,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation'; // 👈 important
 import {
   ChevronRight,
   Moon,
@@ -27,6 +36,8 @@ import {
 } from "@/components/ui/select"
 import { useTheme } from "next-themes"
 
+
+
 export function Profile() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -45,6 +56,7 @@ const [connectStatus, setConnectStatus] = useState("");
 
 const [showProModal, setShowProModal] = useState(false);
 const [proMessage, setProMessage] = useState("");
+const supabase = createClientComponentClient();
 
 
 
@@ -63,7 +75,15 @@ const [proMessage, setProMessage] = useState("");
       setConnectStatus(`${app === "apple" ? "Apple Health" : "Fitbit"} connected.`);
     }
   };
-  
+
+  const handleSignOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error('Sign out error:', error.message);
+  } else {
+    window.location.href = "/"; // 👈 this is fine after signOut properly done
+  }
+};
   
 
 
@@ -300,6 +320,10 @@ return (
   </CardContent>
 </Card>
 
+
+
+
+
 {connectStatus && (
   <p className="text-sm text-muted-foreground text-center mt-2">
     {connectStatus}
@@ -311,31 +335,46 @@ return (
           </div>
         </div>
 
-        {/* 🚀 Invite Friends */}
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center space-x-2">
-              <Gift className="h-5 w-5 text-muted-foreground" />
-              <h2 className="text-sm font-medium">Invite Friends</h2>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Share your referral link to earn 7 days of Pro.
-            </p>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-sm bg-muted px-3 py-1 rounded font-mono select-all">
-                aimeal.app/invite/yourcode
-              </span>
-              <Button
-                size="sm"
-                onClick={() =>
-                  navigator.clipboard.writeText("aimeal.app/invite/yourcode")
-                }
-              >
-                Copy
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+    {/* 🚀 Invite Friends */}
+<Card className="border-none shadow-sm">
+  <CardContent className="p-4 space-y-2">
+    <div className="flex items-center space-x-2">
+      <Gift className="h-5 w-5 text-muted-foreground" />
+      <h2 className="text-sm font-medium">Invite Friends</h2>
+    </div>
+    <p className="text-xs text-muted-foreground">
+      Share your referral link to earn 7 days of Pro.
+    </p>
+    <div className="flex items-center justify-between mt-2">
+      <span className="text-sm bg-muted px-3 py-1 rounded font-mono select-all">
+        aimeal.app/invite/yourcode
+      </span>
+      <Button
+  variant="secondary"
+  size="sm"
+  className="rounded-full"
+  onClick={() => {
+    const shareData = {
+      title: "Join Aimeal!",
+      text: "Track your meals and stay healthy with Aimeal. Join using my invite!",
+      url: "https://aimeal.app/invite?ref=12345",
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch((error) => console.log("Error sharing", error));
+    } else {
+      navigator.clipboard.writeText(shareData.url);
+      alert("Referral link copied to clipboard!");
+    }
+  }}
+>
+  Invite
+</Button>
+
+    </div>
+  </CardContent>
+</Card>
+
 
         {/* 💎 Upgrade to Pro */}
         <Card className="border-none shadow-sm">
@@ -390,26 +429,18 @@ return (
 
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm">
-  <CardContent className="p-4 flex justify-between items-center">
-    <div className="text-sm font-medium">Invite Friends</div>
-    <Button size="sm" onClick={() => setShowInvite(true)}>
-      Invite Now
-    </Button>
-  </CardContent>
-</Card>
+       
 
 
 <Button
   variant="outline"
   className="w-full"
-  onClick={async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  }}
+  onClick={handleSignOut}
 >
   Sign Out
 </Button>
+
+
 
 
       </div>
