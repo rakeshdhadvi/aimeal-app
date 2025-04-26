@@ -1,6 +1,5 @@
 "use client"
-import { useRef, useState } from "react";
-
+import { useRef, useState, useEffect } from "react";
 
 import { MobileLayout } from "./mobile-layout"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,11 +16,26 @@ import type { FoodItem } from "@/lib/food-database"
 export function LogMeal() {
   const [activeTab, setActiveTab] = useState("breakfast")
   const [cameraModalOpen, setCameraModalOpen] = useState(false)
-  const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>([])
+  const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>(() => {
+    // Try to load from LocalStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("selectedFoods");
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    }
+    return [];
+  });
+  
   const [searchQuery, setSearchQuery] = useState("")
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,41 +58,41 @@ export function LogMeal() {
       name: "Oatmeal with berries",
       calories: 320,
       time: "Yesterday",
-      image: "/food/oatmeal.jpg",
+      image: "/placeholder.jpg", // Using placeholder instead of missing image
     },
     {
       name: "Greek yogurt with honey",
       calories: 180,
       time: "2 days ago",
-      image: "/food/yogurt.jpg",
+      image: "/placeholder.jpg", // Using placeholder instead of missing image
     },
     {
       name: "Avocado toast",
       calories: 290,
       time: "3 days ago",
-      image: "/food/avocado-toast.jpg",
+      image: "/placeholder.jpg", // Using placeholder instead of missing image
     },
     {
       name: "Protein smoothie",
       calories: 210,
       time: "4 days ago",
-      image: "/food/smoothie.jpg",
+      image: "/placeholder.jpg", // Using placeholder instead of missing image
     },
   ]
+  
   const aiInsights = [
     "Late dinner detected on Wednesday — may impact sleep quality.",
     "Your average protein intake this week is 12g below target.",
     "Great job staying consistent with breakfast timing!",
   ]
-  
-
-  
 
   const handleFoodSelected = (food: FoodItem) => {
-    setSelectedFoods((prev) => [...prev, food])
-    setError(null)
-  }
-
+    const updatedFoods = [...selectedFoods, food];
+    setSelectedFoods(updatedFoods);
+    localStorage.setItem("selectedFoods", JSON.stringify(updatedFoods));
+    setError(null);
+  };
+  
   const handleOpenCameraModal = () => {
     try {
       setCameraModalOpen(true)
@@ -169,7 +183,7 @@ export function LogMeal() {
 
               <FoodSearch onFoodSelected={handleFoodSelected} />
 
-              {selectedFoods.length > 0 && (
+              {hasMounted && selectedFoods.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-medium text-sm">Selected Foods</h3>
                   {selectedFoods.map((food, index) => (
@@ -193,35 +207,37 @@ export function LogMeal() {
               <div className="space-y-2">
                 <h3 className="font-medium text-sm">Recent Meals</h3>
                 {recentMeals.map((meal, index) => (
-  <Card key={index} className="border-none shadow-sm">
-    <CardContent className="p-3 flex items-center gap-3">
-      <img
-        src={meal.image}
-        alt={meal.name}
-        className="w-12 h-12 rounded-md object-cover border"
-      />
-      <div className="flex-1">
-        <p className="text-sm font-medium">{meal.name}</p>
-        <p className="text-xs text-muted-foreground">{meal.time}</p>
-      </div>
-      <div className="text-sm">{meal.calories} kcal</div>
-    </CardContent>
-  </Card>
-))}
+                  <Card key={index} className="border-none shadow-sm">
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <img
+                        src={meal.image}
+                        alt={meal.name}
+                        className="w-12 h-12 rounded-md object-cover border"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          (e.target as HTMLImageElement).src = "/placeholder.jpg";
+                        }}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{meal.name}</p>
+                        <p className="text-xs text-muted-foreground">{meal.time}</p>
+                      </div>
+                      <div className="text-sm">{meal.calories} kcal</div>
+                    </CardContent>
+                  </Card>
+                ))}
 
-<div className="mt-6">
-  <h3 className="text-sm font-semibold text-muted-foreground mb-2">AI Insights</h3>
-  <ul className="space-y-2 text-sm text-muted-foreground">
-    {aiInsights.map((insight, idx) => (
-      <li key={idx} className="flex items-start gap-2">
-        <span className="text-primary mt-0.5">•</span>
-        <span>{insight}</span>
-      </li>
-    ))}
-  </ul>
-</div>
-
-
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">AI Insights</h3>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {aiInsights.map((insight, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        <span>{insight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </TabsContent>
           ))}
