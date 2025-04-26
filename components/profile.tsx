@@ -1,5 +1,5 @@
 "use client"
-
+import { supabase } from "@/lib/supabaseClient";
 import { useState, useEffect } from "react"
 import { MobileLayout } from "./mobile-layout"
 import { Card, CardContent } from "@/components/ui/card"
@@ -49,11 +49,6 @@ const [proMessage, setProMessage] = useState("");
 
 
 
-
-
-
-
-
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -75,30 +70,7 @@ const [proMessage, setProMessage] = useState("");
   const handleDarkModeToggle = (checked: boolean) => {
     setTheme(checked ? "dark" : "light")
   }
-  {showInvite && (
-  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-    <div className="bg-white dark:bg-background rounded-lg p-6 w-[90%] max-w-sm shadow-lg space-y-4">
-      <h3 className="text-lg font-semibold text-center">Invite Your Friends</h3>
-      <p className="text-sm text-muted-foreground text-center">Share the link below to invite friends to Aimeal.</p>
-
-      <div className="bg-muted p-2 rounded flex justify-between items-center text-sm">
-        <span className="truncate">https://aimeal.app/invite/alex123</span>
-        <Button
-          size="sm"
-          onClick={() => {
-            navigator.clipboard.writeText("https://aimeal.app/invite/alex123");
-          }}
-        >
-          Copy
-        </Button>
-      </div>
-
-      <Button className="w-full" variant="secondary" onClick={() => setShowInvite(false)}>
-        Close
-      </Button>
-    </div>
-  </div>
-)}
+  
 const [profilePic, setProfilePic] = useState<string | null>(null)
 
 const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -428,9 +400,18 @@ return (
 </Card>
 
 
-        <Button variant="outline" className="w-full">
-          Sign Out
-        </Button>
+<Button
+  variant="outline"
+  className="w-full"
+  onClick={async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }}
+>
+  Sign Out
+</Button>
+
+
       </div>
       {showConnectModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -518,6 +499,30 @@ return (
 {proMessage && (
   <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded shadow z-50">
     {proMessage}
+  </div>
+)}
+{showInvite && (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-background rounded-lg p-6 w-[90%] max-w-sm shadow-lg space-y-4">
+      <h3 className="text-lg font-semibold text-center">Invite Your Friends</h3>
+      <p className="text-sm text-muted-foreground text-center">Share the link below to invite friends to Aimeal.</p>
+
+      <div className="bg-muted p-2 rounded flex justify-between items-center text-sm">
+        <span className="truncate">https://aimeal.app/invite/alex123</span>
+        <Button
+          size="sm"
+          onClick={() => {
+            navigator.clipboard.writeText("https://aimeal.app/invite/alex123");
+          }}
+        >
+          Copy
+        </Button>
+      </div>
+
+      <Button className="w-full" variant="secondary" onClick={() => setShowInvite(false)}>
+        Close
+      </Button>
+    </div>
   </div>
 )}
 
